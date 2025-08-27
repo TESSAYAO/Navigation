@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>ParkSense - 智能公园导航系统</title>
+  <title>ParkSense - Smart Park Navigation System</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗺️</text></svg>">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -87,121 +87,121 @@
   
   <div class="sidebar" id="sidebar">
     <header>
-      <div class="title">图层控制</div>
+      <div class="title">Layer Control</div>
       <button class="close-btn" onclick="toggleSidebar()">×</button>
     </header>
     <div class="content">
-      <div class="section-title">条件筛选</div>
+      <div class="section-title">Prerequisite Options</div>
       <div id="filterChips" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
-        <span class="chip" data-filter="atmosphere" data-value="quiet">安静</span>
-        <span class="chip" data-filter="atmosphere" data-value="shaded">遮阴</span>
-        <span class="chip" data-filter="atmosphere" data-value="scenic">景观</span>
-        <span class="chip" data-filter="wildlife" data-value="birds">野生动物</span>
-        <span class="chip" data-filter="duration" data-value="15">15分钟</span>
-        <span class="chip" data-filter="duration" data-value="30">30分钟</span>
+        <span class="chip" data-filter="atmosphere" data-value="quiet">Quiet</span>
+        <span class="chip" data-filter="atmosphere" data-value="shaded">Shaded</span>
+        <span class="chip" data-filter="atmosphere" data-value="scenic">Scenic</span>
+        <span class="chip" data-filter="wildlife" data-value="birds">Wildlife</span>
+        <span class="chip" data-filter="duration" data-value="15">15m</span>
+        <span class="chip" data-filter="duration" data-value="30">30m</span>
       </div>
-      <div class="section-title">智能推荐</div>
-      <div id="recResults" class="analysis">请选择筛选条件以生成推荐路线</div>
-      <button class="btn primary" id="applyRec" disabled>应用推荐路线</button>
+      <div class="section-title">Smart Recommendations</div>
+      <div id="recResults" class="analysis">Please select prerequisites to generate recommendations</div>
+      <button class="btn primary" id="applyRec" disabled>Apply Recommended Route</button>
 
-      <div class="section-title">数据图层 <span id="layerStatus">0/6</span></div>
+      <div class="section-title">Data Layers <span id="layerStatus">0/6</span></div>
       <div class="layer-list" id="layerList"></div>
       
-      <button class="btn primary" onclick="autoLoadAll()">自动加载全部</button>
+      <button class="btn primary" onclick="autoLoadAll()">Auto Load All</button>
       
-      <div class="section-title">图层开关</div>
+      <div class="section-title">Layer Toggles</div>
       <div class="layer-toggles">
         <label class="layer-toggle">
-          <input type="checkbox" data-layer="boundary"> 公园边界
+          <input type="checkbox" data-layer="boundary"> Park Boundary
         </label>
         <label class="layer-toggle">
-          <input type="checkbox" data-layer="trails" checked> 步道网络
+          <input type="checkbox" data-layer="trails" checked> Trails Network
         </label>
         <label class="layer-toggle">
-          <input type="checkbox" data-layer="vegetation"> 植被
+          <input type="checkbox" data-layer="vegetation"> Vegetation
         </label>
         <label class="layer-toggle">
-          <input type="checkbox" data-layer="water"> 水景
+          <input type="checkbox" data-layer="water"> Water Features
         </label>
         <label class="layer-toggle">
-          <input type="checkbox" data-layer="facilities"> 设施
+          <input type="checkbox" data-layer="facilities"> Facilities
         </label>
         <label class="layer-toggle">
-          <input type="checkbox" data-layer="poi" checked> 兴趣点
+          <input type="checkbox" data-layer="poi" checked> POI
         </label>
       </div>
       
-      <div class="section-title">POI控制</div>
+      <div class="section-title">POI Controls</div>
       <div class="poi-controls">
         <div class="control-row">
-          <label>大小:</label>
+          <label>Size:</label>
           <input type="range" id="poiSize" min="2" max="10" value="4">
           <span id="poiSizeValue">4</span>
         </div>
         <div class="control-row">
-          <label>透明度:</label>
+          <label>Opacity:</label>
           <input type="range" id="poiOpacity" min="0.1" max="1" step="0.1" value="0.8">
           <span id="poiOpacityValue">0.8</span>
         </div>
         <div class="control-row">
-          <label>数量限制:</label>
+          <label>Limit:</label>
           <input type="range" id="poiLimit" min="50" max="1000" step="50" value="1000">
           <span id="poiLimitValue">1000</span>
         </div>
         <div class="control-row">
-          <label>地理过滤:</label>
+          <label>Geo Filter:</label>
           <select id="poiFilter">
-            <option value="none">无</option>
-            <option value="ultra-strict">极严格</option>
-            <option value="strict">严格</option>
-            <option value="moderate">中等</option>
-            <option value="loose" selected>宽松</option>
+            <option value="none">None</option>
+            <option value="ultra-strict">Ultra-strict</option>
+            <option value="strict">Strict</option>
+            <option value="moderate">Moderate</option>
+            <option value="loose" selected>Loose</option>
           </select>
         </div>
         
-        <div class="section-title">POI类型选择</div>
+        <div class="section-title">POI Type Selection</div>
         <div class="poi-buttons">
-          <button class="btn" id="selectAllPoi">全选</button>
-          <button class="btn" id="selectNonePoi">全不选</button>
-          <button class="btn" id="selectEssentialPoi">基础设施</button>
+          <button class="btn" id="selectAllPoi">Select All</button>
+          <button class="btn" id="selectNonePoi">Select None</button>
+          <button class="btn" id="selectEssentialPoi">Essential Facilities</button>
         </div>
         
         <div class="poi-types">
-          <label class="poi-type"><input type="checkbox" id="poi-toilets"> 洗手间</label>
-          <label class="poi-type"><input type="checkbox" id="poi-food"> 餐饮</label>
-          <label class="poi-type"><input type="checkbox" id="poi-entrance"> 入口</label>
-          <label class="poi-type"><input type="checkbox" id="poi-information"> 信息</label>
-          <label class="poi-type"><input type="checkbox" id="poi-playground"> 游乐场</label>
-          <label class="poi-type"><input type="checkbox" id="poi-bench"> 长椅</label>
-          <label class="poi-type"><input type="checkbox" id="poi-water"> 饮水</label>
-          <label class="poi-type"><input type="checkbox" id="poi-parking"> 停车</label>
-          <label class="poi-type"><input type="checkbox" id="poi-shop"> 商店</label>
-          <label class="poi-type"><input type="checkbox" id="poi-garden"> 花园</label>
-          <label class="poi-type"><input type="checkbox" id="poi-trees" checked> 树木</label>
-          <label class="poi-type"><input type="checkbox" id="poi-wildlife" checked> 野生动物</label>
-          <label class="poi-type"><input type="checkbox" id="poi-water-feature"> 水景</label>
-          <label class="poi-type"><input type="checkbox" id="poi-memorial"> 纪念碑</label>
-          <label class="poi-type"><input type="checkbox" id="poi-bridge"> 桥梁</label>
-          <label class="poi-type"><input type="checkbox" id="poi-viewpoint"> 观景点</label>
-          <label class="poi-type"><input type="checkbox" id="poi-art"> 艺术品</label>
-          <label class="poi-type"><input type="checkbox" id="poi-monument"> 雕塑</label>
-          <label class="poi-type"><input type="checkbox" id="poi-other"> 其他</label>
+          <label class="poi-type"><input type="checkbox" id="poi-toilets"> Toilets</label>
+          <label class="poi-type"><input type="checkbox" id="poi-food"> Food</label>
+          <label class="poi-type"><input type="checkbox" id="poi-entrance"> Entrance</label>
+          <label class="poi-type"><input type="checkbox" id="poi-information"> Info</label>
+          <label class="poi-type"><input type="checkbox" id="poi-playground"> Playground</label>
+          <label class="poi-type"><input type="checkbox" id="poi-bench"> Bench</label>
+          <label class="poi-type"><input type="checkbox" id="poi-water"> Water</label>
+          <label class="poi-type"><input type="checkbox" id="poi-parking"> Parking</label>
+          <label class="poi-type"><input type="checkbox" id="poi-shop"> Shop</label>
+          <label class="poi-type"><input type="checkbox" id="poi-garden"> Garden</label>
+          <label class="poi-type"><input type="checkbox" id="poi-trees" checked> Trees</label>
+          <label class="poi-type"><input type="checkbox" id="poi-wildlife" checked> Wildlife</label>
+          <label class="poi-type"><input type="checkbox" id="poi-water-feature"> Water Feature</label>
+          <label class="poi-type"><input type="checkbox" id="poi-memorial"> Memorial</label>
+          <label class="poi-type"><input type="checkbox" id="poi-bridge"> Bridge</label>
+          <label class="poi-type"><input type="checkbox" id="poi-viewpoint"> Viewpoint</label>
+          <label class="poi-type"><input type="checkbox" id="poi-art"> Art</label>
+          <label class="poi-type"><input type="checkbox" id="poi-monument"> Monument</label>
+          <label class="poi-type"><input type="checkbox" id="poi-other"> Other</label>
         </div>
         
-        <button class="btn primary" id="reloadPoi">重新加载POI</button>
-        <button class="btn" id="analyzePoi">分析POI数据</button>
-        <div class="analysis" id="poiAnalysis">点击分析查看POI统计</div>
+        <button class="btn primary" id="reloadPoi">Reload POI</button>
+        <button class="btn" id="analyzePoi">Analyze POI Data</button>
+        <div class="analysis" id="poiAnalysis">Click Analyze to view POI statistics</div>
       </div>
       
-      <div class="section-title">路径规划</div>
+      <div class="section-title">Route Planning</div>
       <div class="controls">
-        <button class="btn" id="pickStart">选择起点</button>
-        <button class="btn" id="pickEnd">选择终点</button>
-        <button class="btn primary" id="plan" disabled>规划路径</button>
-        <button class="btn" id="clear">清除</button>
-        <div id="statDistance">总距离: —</div>
-        <div id="statTime">预计时间: —</div>
-        <div id="weather">天气: 获取中...</div>
+        <button class="btn" id="pickStart">Pick Start</button>
+        <button class="btn" id="pickEnd">Pick End</button>
+        <button class="btn primary" id="plan" disabled>Plan Route</button>
+        <button class="btn" id="clear">Clear</button>
+        <div id="statDistance">Total distance: —</div>
+        <div id="statTime">Estimated time: —</div>
+        <div id="weather">Weather: Cloudy 16°C</div>
       </div>
     </div>
   </div>

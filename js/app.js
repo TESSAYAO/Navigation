@@ -1,5 +1,5 @@
-// ParkSense - 智能公园导航系统 - GitHub Pages 版本
-console.log('ParkSense - 智能公园导航系统 - GitHub Pages 版本');
+// ParkSense - Smart Park Navigation System - GitHub Pages Version
+console.log('ParkSense - Smart Park Navigation System - GitHub Pages Version');
 
 // 基础配置和变量
 const AUTO_ENABLE = true;
@@ -173,10 +173,10 @@ function updateLayerUI(key, success, message = '') {
   
   if (success) {
     el.className = 'layer-state ok';
-    el.textContent = '已加载';
+    el.textContent = 'Loaded';
   } else {
     el.className = 'layer-state err';
-    el.textContent = '加载失败' + (message ? (' · ' + message) : '');
+    el.textContent = 'Load failed' + (message ? (' · ' + message) : '');
   }
   
   updateLayerStatus();
@@ -195,7 +195,7 @@ async function fetchJSON(url) {
 }
 
 async function loadLayer(key, filename) {
-  updateLayerUI(key, false, '加载中...');
+      updateLayerUI(key, false, 'Loading...');
   
   try {
     let data = await fetchJSON(filename);
@@ -217,7 +217,7 @@ async function loadLayer(key, filename) {
       try {
         map.fitBounds(layer.getBounds(), { padding: [20, 20] });
       } catch (e) {
-        console.warn(`[BOUNDARY] 调整视图失败:`, e);
+        console.warn(`[BOUNDARY] Failed to adjust view:`, e);
       }
     }
     
@@ -229,7 +229,7 @@ async function loadLayer(key, filename) {
     
     updateLayerUI(key, true);
   } catch (e) {
-    console.error(`[${key.toUpperCase()}] 加载失败:`, e);
+    console.error(`[${key.toUpperCase()}] Load failed:`, e);
     updateLayerUI(key, false, e.message);
   }
 }
@@ -255,7 +255,7 @@ function setupStyleControls() {
     item.setAttribute('data-layer', key);
     item.innerHTML = `
       <span class="layer-name">${key}</span>
-      <span class="layer-state loading">等待加载</span>
+              <span class="layer-state loading">Waiting to load</span>
     `;
     layerList.appendChild(item);
   });
@@ -264,31 +264,31 @@ function setupStyleControls() {
 // 筛选器与推荐
 const routeData = [
   {
-    id:'lake_circuit', name:'湖心环线', distance:1200, estimatedTime:15, difficulty:'easy',
+    id:'lake_circuit', name:'Lake Circuit', distance:1200, estimatedTime:15, difficulty:'easy',
     wildlifeScore:0.9, shadeScore:0.7, quietScore:0.6, scenicScore:0.9, facilityScore:0.8,
     trailCoords:[[51.5031,-0.1343],[51.5035,-0.1340],[51.5045,-0.1339],[51.5050,-0.1331],[51.5046,-0.1320],[51.5038,-0.1318]],
     seasonalFeatures:{cherry:0.3, autumn:0.8, daffodils:0.2, tulips:0.1}
   },
   {
-    id:'royal_path', name:'皇家小径', distance:800, estimatedTime:10, difficulty:'easy',
+    id:'royal_path', name:'Royal Path', distance:800, estimatedTime:10, difficulty:'easy',
     wildlifeScore:0.6, shadeScore:0.5, quietScore:0.4, scenicScore:0.7, facilityScore:0.9,
     trailCoords:[[51.5031,-0.1343],[51.5033,-0.1338],[51.5035,-0.1333],[51.5037,-0.1328],[51.5035,-0.1323]],
     seasonalFeatures:{cherry:0.6, autumn:0.5, daffodils:0.4, tulips:0.3}
   },
   {
-    id:'north_meadow', name:'北草地漫步', distance:900, estimatedTime:12, difficulty:'easy',
+    id:'north_meadow', name:'North Meadow Walk', distance:900, estimatedTime:12, difficulty:'easy',
     wildlifeScore:0.7, shadeScore:0.8, quietScore:0.7, scenicScore:0.8, facilityScore:0.7,
     trailCoords:[[51.5031,-0.1343],[51.5046,-0.1345],[51.5050,-0.1332],[51.5038,-0.1332],[51.5031,-0.1343]],
     seasonalFeatures:{cherry:0.5, autumn:0.6, daffodils:0.4, tulips:0.2}
   },
   {
-    id:'blue_bridge_loop', name:'蓝桥环线', distance:1000, estimatedTime:13, difficulty:'easy',
+    id:'blue_bridge_loop', name:'Blue Bridge Loop', distance:1000, estimatedTime:13, difficulty:'easy',
     wildlifeScore:0.8, shadeScore:0.6, quietScore:0.5, scenicScore:0.8, facilityScore:0.7,
     trailCoords:[[51.5029,-0.1363],[51.5026,-0.1360],[51.5023,-0.1354],[51.5021,-0.1348],[51.5024,-0.1343],[51.5028,-0.1347],[51.5029,-0.1363]],
     seasonalFeatures:{cherry:0.4, autumn:0.7, daffodils:0.3, tulips:0.2}
   },
   {
-    id:'island_view', name:'岛屿观景', distance:700, estimatedTime:9, difficulty:'easy',
+    id:'island_view', name:'Island View', distance:700, estimatedTime:9, difficulty:'easy',
     wildlifeScore:0.85, shadeScore:0.5, quietScore:0.5, scenicScore:0.85, facilityScore:0.6,
     trailCoords:[[51.5040,-0.1332],[51.5039,-0.1326],[51.5038,-0.1321],[51.5037,-0.1317],[51.5038,-0.1323],[51.5040,-0.1332]],
     seasonalFeatures:{cherry:0.3, autumn:0.6, daffodils:0.3, tulips:0.2}
@@ -397,13 +397,13 @@ function setupFilterUI() {
 function generateRecommendations() {
   recommendedRoutes = routeData.map(route=>{
     let score = 0.5, reasons=[];
-    if (selectedFilters.atmosphere.includes('quiet') && route.quietScore>0.6) { score+=0.2; reasons.push('安静'); }
-    if (selectedFilters.atmosphere.includes('shaded') && route.shadeScore>0.6) { score+=0.15; reasons.push('遮阴'); }
-    if (selectedFilters.atmosphere.includes('scenic') && route.scenicScore>0.7) { score+=0.15; reasons.push('景观'); }
-    if ((selectedFilters.wildlife||[]).length>0 && route.wildlifeScore>0.7) { score+=0.2; reasons.push('野生动物'); }
+    if (selectedFilters.atmosphere.includes('quiet') && route.quietScore>0.6) { score+=0.2; reasons.push('Quiet'); }
+    if (selectedFilters.atmosphere.includes('shaded') && route.shadeScore>0.6) { score+=0.15; reasons.push('Shade'); }
+    if (selectedFilters.atmosphere.includes('scenic') && route.scenicScore>0.7) { score+=0.15; reasons.push('Scenic'); }
+    if ((selectedFilters.wildlife||[]).length>0 && route.wildlifeScore>0.7) { score+=0.2; reasons.push('Wildlife'); }
     if (selectedFilters.duration) {
       const diff = Math.abs(route.estimatedTime - selectedFilters.duration);
-      if (diff<=5) { score+=0.1; reasons.push('时长匹配'); }
+      if (diff<=5) { score+=0.1; reasons.push('Duration Match'); }
     }
     return {...route, score: Math.min(score,1), reasons};
   }).sort((a,b)=>b.score-a.score);
@@ -414,22 +414,22 @@ function generateRecommendations() {
 function renderRecommendations() {
   const box = document.getElementById('recResults');
   if (!box) return;
-  if (recommendedRoutes.length===0) { box.textContent='请选择筛选条件以生成推荐路线'; return; }
+  if (recommendedRoutes.length===0) { box.textContent='Please select prerequisites to generate recommendations'; return; }
   selectedRecIndex = 0;
   const has100 = recommendedRoutes.filter(r=>r.score>=1).length;
   const threshold = has100>=2 ? 1 : 0.8;
   const filtered = recommendedRoutes.filter(r=>r.score>=threshold).slice(0,2);
   const applyBtn2 = document.getElementById('applyRec');
   if (applyBtn2) applyBtn2.disabled = filtered.length===0;
-  if (filtered.length===0) { box.textContent='没有符合条件的推荐路线'; return; }
+  if (filtered.length===0) { box.textContent='No recommendations meet the threshold'; return; }
   box.innerHTML = filtered.map((r,i)=>`
     <div class="rec-card ${i? 'secondary':''}" data-idx="${i}">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <div style="font-weight:600;color:#333;">${r.name}</div>
-        <div style="font-size:12px;color:#4CAF50;">${Math.round(r.score*100)} 分 ${i? '备选':'推荐'}</div>
+        <div style="font-size:12px;color:#4CAF50;">${Math.round(r.score*100)} pts ${i? 'Alternative':'Recommended'}</div>
       </div>
       <div style="font-size:12px;color:#666;margin-top:4px;">
-        ${(() => { const s = estimateDistanceAlongTrails(r) || summarizePath(computeWaypointsForDisplay(r)); return `📏 ${Math.round(s.distM)}m · ⏱ ${s.timeMin}分钟 · 🚶 ${r.difficulty}`; })()}
+        ${(() => { const s = estimateDistanceAlongTrails(r) || summarizePath(computeWaypointsForDisplay(r)); return `📏 ${Math.round(s.distM)}m · ⏱ ${s.timeMin}min · 🚶 ${r.difficulty}`; })()}
       </div>
       <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">${(r.reasons||[]).slice(0,4).map(x=>`<span class="chip selected" style="pointer-events:none">${x}</span>`).join('')}</div>
     </div>
@@ -457,8 +457,8 @@ async function drawRecommendedRoute(route) {
     const estMin = Math.max(1, Math.round(total / 75));
     const dEl = document.getElementById('statDistance');
     const tEl = document.getElementById('statTime');
-    if (dEl) dEl.textContent = `总距离：${Math.round(total)} m`;
-    if (tEl) tEl.textContent = `预计时间：${estMin} min`;
+    if (dEl) dEl.textContent = `Total distance: ${Math.round(total)} m`;
+    if (tEl) tEl.textContent = `Estimated time: ${estMin} min`;
     try { map.fitBounds(routeLine.getBounds(), { padding:[20,20] }); } catch(_) {}
     return;
   }
@@ -473,8 +473,8 @@ async function drawRecommendedRoute(route) {
   const estMin = Math.max(1, Math.round(total / 75));
   const dEl = document.getElementById('statDistance');
   const tEl = document.getElementById('statTime');
-  if (dEl) dEl.textContent = `总距离：${Math.round(total)} m`;
-  if (tEl) tEl.textContent = `预计时间：${estMin} min`;
+  if (dEl) dEl.textContent = `Total distance: ${Math.round(total)} m`;
+  if (tEl) tEl.textContent = `Estimated time: ${estMin} min`;
 
   try { map.fitBounds(routeLine.getBounds(), { padding:[20,20] }); } catch(_) {}
 }
@@ -559,15 +559,15 @@ function setupPoiControls() {
       layers.poi.addTo(map);
       
       poiAnalysis.innerHTML = `
-        <strong>POI 重新加载完成</strong><br>
-        显示数据: ${data.features.length} 项
+        <strong>POI reload complete</strong><br>
+        Displaying data: ${data.features.length} items
       `;
       
       updatePoiStyle();
       
     } catch (e) {
-      console.error('[POI] 重新加载失败:', e);
-      poiAnalysis.innerHTML = `<span style="color: red;">重新加载失败: ${e.message}</span>`;
+      console.error('[POI] Reload failed:', e);
+      poiAnalysis.innerHTML = `<span style="color: red;">Reload failed: ${e.message}</span>`;
     }
   };
 }
@@ -726,10 +726,10 @@ function setPickMode(mode) {
   
   if (mode === 'start') {
     pickHint.style.display = 'block';
-    pickHint.textContent = '提示：在地图上点击选择起点';
+    pickHint.textContent = 'Hint: Click on the map to select start point';
   } else if (mode === 'end') {
     pickHint.style.display = 'block';
-    pickHint.textContent = '提示：在地图上点击选择终点';
+    pickHint.textContent = 'Hint: Click on the map to select end point';
   } else {
     pickHint.style.display = 'none';
     pickHint.textContent = '';
@@ -747,8 +747,8 @@ function clearAll() {
   if (startMarker) { map.removeLayer(startMarker); startMarker = null; }
   if (endMarker) { map.removeLayer(endMarker); endMarker = null; }
   startLatLng = null; endLatLng = null;
-  document.getElementById('statDistance').textContent = '总距离: —';
-  document.getElementById('statTime').textContent = '预计时间: —';
+  document.getElementById('statDistance').textContent = 'Total distance: —';
+  document.getElementById('statTime').textContent = 'Estimated time: —';
   setPickMode(null);
 }
 
@@ -767,8 +767,8 @@ function planRoute() {
         if (routePath && routePath.length > 1) {
           routeLine = L.polyline(routePath, {color:'#e11d48', weight:4}).addTo(map);
           const dist = routeDistance(routePath);
-          document.getElementById('statDistance').textContent = `总距离：${Math.round(dist)} 米`;
-          document.getElementById('statTime').textContent = `预计时间：${Math.max(1, Math.round(dist/80))} 分钟`;
+          document.getElementById('statDistance').textContent = `Total distance: ${Math.round(dist)} meters`;
+          document.getElementById('statTime').textContent = `Estimated time: ${Math.max(1, Math.round(dist/80))} minutes`;
           return;
         }
       }
@@ -777,16 +777,16 @@ function planRoute() {
     // 回退到直线路径
     routeLine = L.polyline([startLatLng, endLatLng], {color:'#e11d48', weight:4, dashArray:'5,5'}).addTo(map);
     const dist = map.distance(startLatLng, endLatLng);
-    document.getElementById('statDistance').textContent = `总距离：${Math.round(dist)} 米 (直线)`;
-    document.getElementById('statTime').textContent = `预计时间：${Math.max(1, Math.round(dist/80))} 分钟`;
+    document.getElementById('statDistance').textContent = `Total distance: ${Math.round(dist)} meters (straight line)`;
+    document.getElementById('statTime').textContent = `Estimated time: ${Math.max(1, Math.round(dist/80))} minutes`;
     
   } catch (error) {
-    console.error('路径规划失败:', error);
+    console.error('Route planning failed:', error);
     // 使用直线作为备用方案
     routeLine = L.polyline([startLatLng, endLatLng], {color:'#e11d48', weight:4, dashArray:'5,5'}).addTo(map);
     const dist = map.distance(startLatLng, endLatLng);
-    document.getElementById('statDistance').textContent = `总距离：${Math.round(dist)} 米 (直线)`;
-    document.getElementById('statTime').textContent = `预计时间：${Math.max(1, Math.round(dist/80))} 分钟`;
+    document.getElementById('statDistance').textContent = `Total distance: ${Math.round(dist)} meters (straight line)`;
+    document.getElementById('statTime').textContent = `Estimated time: ${Math.max(1, Math.round(dist/80))} minutes`;
   }
 }
 
@@ -796,7 +796,7 @@ function setupLayerToggles() {
   if (toggles && !toggles.querySelector('input[data-layer="wildlife_islands"]')) {
     const label = document.createElement('label');
     label.className = 'layer-toggle';
-    label.innerHTML = '<input type="checkbox" data-layer="wildlife_islands" checked> 野生动物岛屿';
+    label.innerHTML = '<input type="checkbox" data-layer="wildlife_islands" checked> Wildlife Islands';
     toggles.appendChild(label);
   }
   document.querySelectorAll('[data-layer]').forEach(checkbox => {
@@ -827,11 +827,11 @@ function setupEventListeners() {
     if (pickMode === 'start') {
       if (startMarker) map.removeLayer(startMarker);
       startLatLng = [e.latlng.lat, e.latlng.lng];
-      startMarker = L.circleMarker(startLatLng, {radius:8, color:'#fff', weight:2, fillColor:'#22c55e', fillOpacity:1}).addTo(map).bindPopup('起点');
+      startMarker = L.circleMarker(startLatLng, {radius:8, color:'#fff', weight:2, fillColor:'#22c55e', fillOpacity:1}).addTo(map).bindPopup('Start');
     } else if (pickMode === 'end') {
       if (endMarker) map.removeLayer(endMarker);
       endLatLng = [e.latlng.lat, e.latlng.lng];
-      endMarker = L.circleMarker(endLatLng, {radius:8, color:'#fff', weight:2, fillColor:'#ef4444', fillOpacity:1}).addTo(map).bindPopup('终点');
+      endMarker = L.circleMarker(endLatLng, {radius:8, color:'#fff', weight:2, fillColor:'#ef4444', fillOpacity:1}).addTo(map).bindPopup('End');
     }
     setPickMode(null);
     updatePlanButton();
@@ -841,13 +841,13 @@ function setupEventListeners() {
 // 天气信息
 async function loadWeatherInfo() {
   try {
-    const r = await fetch("https://api.openweathermap.org/data/2.5/weather?lat=51.5029&lon=-0.1342&units=metric&lang=zh_cn&appid=b3c7d2985be74417378ca6517f19c700");
+    const r = await fetch("https://api.openweathermap.org/data/2.5/weather?lat=51.5029&lon=-0.1342&units=metric&lang=en&appid=b3c7d2985be74417378ca6517f19c700");
     const j = await r.json();
     const t = Math.round(j.main?.temp ?? 0);
     const d = j.weather?.[0]?.description || '';
-    document.getElementById('weather').textContent = `天气: ${d}, ${t}°C`;
+    document.getElementById('weather').textContent = `Weather: ${d}, ${t}°C`;
   } catch(e) {
-    document.getElementById('weather').textContent = '天气: 加载失败（不影响导航功能）';
+    document.getElementById('weather').textContent = 'Weather: load failed (does not affect navigation)';
   }
 }
 
