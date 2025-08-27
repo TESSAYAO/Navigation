@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>ParkSense - Demo-Version</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗺️</text></svg>">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; height:100vh; overflow:hidden; }
+    #map { width:100%; height:100%; }
+    .floating-btn {
+      position:fixed; bottom:20px; right:20px; z-index:1000;
+      width:56px; height:56px; border-radius:50%; background:#0ea5e9; color:#fff;
+      border:none; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.15);
+      display:flex; align-items:center; justify-content:center; font-size:20px;
+    }
+    .floating-btn:hover { background:#0284c7; }
+    .sidebar {
+      position:fixed; top:0; right:-400px; width:400px; height:100vh; background:#fff;
+      box-shadow:-2px 0 10px rgba(0,0,0,0.1); transition:right 0.3s ease; z-index:999;
+      display:flex; flex-direction:column; overflow-y:auto;
+    }
+    .sidebar.open { right:0; }
+    .sidebar header {
+      background:#f8fafc;
+      padding:16px; border-bottom:1px solid #e2e8f0; flex-shrink:0;
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    .title { font-weight:700; color:#155e75; font-size:18px; }
+    .close-btn { background:none; border:none; font-size:24px; cursor:pointer; color:#64748b; }
+    .content { padding:16px; flex:1; overflow-y:auto;
+      display:flex; flex-direction:column; gap:8px;
+    }
+    .section-title { font-weight:600; font-size:14px; margin-bottom:6px; }
+    .btn { padding:8px 12px; background:#f1f5f9; border:1px solid #cbd5e1;
+      border-radius:6px; cursor:pointer; font-size:13px; flex-shrink:0;
+    }
+    .btn.primary { background:#0ea5e9; color:#fff; }
+    .btn:hover { background:#e2e8f0; }
+    .btn.primary:hover { background:#0284c7; }
+    .layer-list { display:flex; flex-direction:column; gap:4px;
+      max-height:200px; overflow-y:auto;
+    }
+    .layer-item {
+      display:flex; justify-content:space-between; align-items:center; padding:6px 8px;
+      background:#f8fafc; border:1px solid #e2e8f0; border-radius:4px;
+      font-size:13px;
+    }
+    .layer-name { font-weight:500; color:#334155; }
+    .layer-state { font-size:11px; padding:2px 6px; border-radius:3px; }
+    .layer-state.ok { background:#dcfce7; color:#166534; }
+    .layer-state.loading { background:#fef3c7; color:#92400e; }
+    .layer-state.err { background:#fecaca; color:#991b1b; }
+    .controls { display:flex; flex-direction:column; gap:8px;
+      border-bottom:1px solid #f2f2f2;
+    }
+    .hint { font-size:12px; color:#334155; background:#f1f5f9; padding:8px; border-radius:6px; }
+    .poi-controls { display:flex; flex-direction:column; gap:8px; }
+    .control-row { display:flex; align-items:center; gap:8px; }
+    .control-row label { font-size:13px; min-width:60px; }
+    .control-row input[type="range"] { flex:1; }
+    .control-row span { font-size:12px; color:#64748b; min-width:30px; }
+    .poi-types { display:grid; grid-template-columns:1fr 1fr; gap:4px; max-height:200px; overflow-y:auto; }
+    .poi-type { display:flex; align-items:center; gap:4px; font-size:12px; }
+    .poi-buttons { display:flex; gap:4px; }
+    .poi-buttons button { flex:1; padding:4px 8px; font-size:11px; }
+    .analysis { font-size:12px; background:#f8fafc; padding:8px; border-radius:4px; margin-top:8px; }
+    .pick-hint { position:fixed; top:20px; left:50%; transform:translateX(-50%); 
+      background:#fbbf24; color:#92400e; padding:8px 16px; border-radius:6px; 
+      font-size:14px; z-index:1000; display:none; }
+    .layer-toggles { display:flex; flex-direction:column; gap:4px; }
+    .layer-toggle { display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; }
+    .layer-toggle input[type="checkbox"] { margin:0; }
+  .chip { display:inline-flex; align-items:center; padding:4px 10px; border-radius:16px; background:#f1f5f9; border:1px solid #cbd5e1; cursor:pointer; font-size:12px; color:#334155; }
+  .chip.selected { background:#4CAF50; border-color:#4CAF50; color:#fff; }
+  .rec-card { background:#F8F9FA; border-left:4px solid #4CAF50; border-radius:8px; padding:12px; margin:8px 0; cursor:pointer; }
+  .rec-card.secondary { border-left-color:#81C784; }
+  .rec-card.selected { outline:2px solid #0ea5e9; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  
+  <button class="floating-btn" onclick="toggleSidebar()">⚙</button>
+  
+  <div class="sidebar" id="sidebar">
+    <header>
+      <div class="title">Layer Control</div>
+      <button class="close-btn" onclick="toggleSidebar()">×</button>
+    </header>
+    <div class="content">
+      <div class="section-title">Prerequisite Options</div>
+      <div id="filterChips" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+        <span class="chip" data-filter="atmosphere" data-value="quiet">Quiet</span>
+        <span class="chip" data-filter="atmosphere" data-value="shaded">Shaded</span>
+        <span class="chip" data-filter="atmosphere" data-value="scenic">Scenic</span>
+        <span class="chip" data-filter="wildlife" data-value="birds">Wildlife</span>
+        <span class="chip" data-filter="duration" data-value="15">15m</span>
+        <span class="chip" data-filter="duration" data-value="30">30m</span>
+      </div>
+      <div class="section-title">Smart Recommendations</div>
+      <div id="recResults" class="analysis">Please select prerequisites to generate recommendations</div>
+      <button class="btn primary" id="applyRec" disabled>Apply Recommended Route</button>
+
+      <div class="section-title">Data Layers <span id="layerStatus">0/6</span></div>
+      <div class="layer-list" id="layerList"></div>
+      
+      <button class="btn primary" onclick="autoLoadAll()">Auto Load All</button>
+      
+      <div class="section-title">Layer Toggles</div>
+      <div class="layer-toggles">
+        <label class="layer-toggle">
+          <input type="checkbox" data-layer="boundary"> Park Boundary
+        </label>
+        <label class="layer-toggle">
+          <input type="checkbox" data-layer="trails" checked> Trails Network
+        </label>
+        <label class="layer-toggle">
+          <input type="checkbox" data-layer="vegetation"> Vegetation
+        </label>
+        <label class="layer-toggle">
+          <input type="checkbox" data-layer="water"> Water Features
+        </label>
+        <label class="layer-toggle">
+          <input type="checkbox" data-layer="facilities"> Facilities
+        </label>
+        <label class="layer-toggle">
+          <input type="checkbox" data-layer="poi" checked> POI
+        </label>
+      </div>
+      
+      <div class="section-title">POI Controls</div>
+      <div class="poi-controls">
+        <div class="control-row">
+          <label>Size:</label>
+          <input type="range" id="poiSize" min="2" max="10" value="4">
+          <span id="poiSizeValue">4</span>
+        </div>
+        <div class="control-row">
+          <label>Opacity:</label>
+          <input type="range" id="poiOpacity" min="0.1" max="1" step="0.1" value="0.8">
+          <span id="poiOpacityValue">0.8</span>
+        </div>
+        <div class="control-row">
+          <label>Limit:</label>
+          <input type="range" id="poiLimit" min="50" max="1000" step="50" value="1000">
+          <span id="poiLimitValue">1000</span>
+        </div>
+        <div class="control-row">
+          <label>Geo Filter:</label>
+          <select id="poiFilter">
+            <option value="none">None</option>
+            <option value="ultra-strict">Ultra-strict</option>
+            <option value="strict">Strict</option>
+            <option value="moderate">Moderate</option>
+            <option value="loose" selected>Loose</option>
+          </select>
+        </div>
+        
+        <div class="section-title">POI Type Selection</div>
+        <div class="poi-buttons">
+          <button class="btn" id="selectAllPoi">Select All</button>
+          <button class="btn" id="selectNonePoi">Select None</button>
+          <button class="btn" id="selectEssentialPoi">Essential Facilities</button>
+        </div>
+        
+        <div class="poi-types">
+          <label class="poi-type"><input type="checkbox" id="poi-toilets"> Toilets</label>
+          <label class="poi-type"><input type="checkbox" id="poi-food"> Food</label>
+          <label class="poi-type"><input type="checkbox" id="poi-entrance"> Entrance</label>
+          <label class="poi-type"><input type="checkbox" id="poi-information"> Info</label>
+          <label class="poi-type"><input type="checkbox" id="poi-playground"> Playground</label>
+          <label class="poi-type"><input type="checkbox" id="poi-bench"> Bench</label>
+          <label class="poi-type"><input type="checkbox" id="poi-water"> Water</label>
+          <label class="poi-type"><input type="checkbox" id="poi-parking"> Parking</label>
+          <label class="poi-type"><input type="checkbox" id="poi-shop"> Shop</label>
+          <label class="poi-type"><input type="checkbox" id="poi-garden"> Garden</label>
+          <label class="poi-type"><input type="checkbox" id="poi-trees" checked> Trees</label>
+          <label class="poi-type"><input type="checkbox" id="poi-wildlife" checked> Wildlife</label>
+          <label class="poi-type"><input type="checkbox" id="poi-water-feature"> Water Feature</label>
+          <label class="poi-type"><input type="checkbox" id="poi-memorial"> Memorial</label>
+          <label class="poi-type"><input type="checkbox" id="poi-bridge"> Bridge</label>
+          <label class="poi-type"><input type="checkbox" id="poi-viewpoint"> Viewpoint</label>
+          <label class="poi-type"><input type="checkbox" id="poi-art"> Art</label>
+          <label class="poi-type"><input type="checkbox" id="poi-monument"> Monument</label>
+          <label class="poi-type"><input type="checkbox" id="poi-other"> Other</label>
+        </div>
+        
+        <button class="btn primary" id="reloadPoi">Reload POI</button>
+        <button class="btn" id="analyzePoi">Analyze POI Data</button>
+        <div class="analysis" id="poiAnalysis">Click Analyze to view POI statistics</div>
+      </div>
+      
+      <div class="section-title">Route Planning</div>
+      <div class="controls">
+        <button class="btn" id="pickStart">Pick Start</button>
+        <button class="btn" id="pickEnd">Pick End</button>
+        <button class="btn primary" id="plan" disabled>Plan Route</button>
+        <button class="btn" id="clear">Clear</button>
+        <div id="statDistance">Total distance: —</div>
+        <div id="statTime">Estimated time: —</div>
+        <div id="weather">Weather: Cloudy 16°C</div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="pick-hint" id="pickHint"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    console.log('PACKED_FROM: C:\\Users\\Administrator\\Navigation\\Navigation');
+    // 基础配置和变量
+    const AUTO_ENABLE = true;
+    const LONDON_BOUNDS = { minLng: -0.5, maxLng: 0.5, minLat: 51.2, maxLat: 51.8 };
+    
+    const LAYER_FILES = {
+      boundary: './local-nav/local-nav/park-data/park-data/park_boundary.geojson',
+      trails: './local-nav/local-nav/park-data/park-data/trails.geojson',
+      vegetation: './local-nav/local-nav/park-data/park-data/vegetation.geojson',
+      water: './local-nav/local-nav/park-data/park-data/water.geojson',
+      facilities: './local-nav/local-nav/park-data/park-data/facilities_toilet_drink_bench.geojson',
+      poi: './local-nav/local-nav/park-data/park-data/poi_all.geojson',
+      wildlife_islands: './local-nav/local-nav/park-data/park-data/wildlife_islands.geojson'
+    };
+
+    // 地图初始化
+    const map = L.map('map').setView([51.5045, -0.1300], 16);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    const layers = {};
+    let pickMode = null;
+    let selectedFilters = { atmosphere: [], wildlife: [], duration: null };
+    let recommendedRoutes = [];
+    let selectedRecIndex = 0;
+    let __entranceFeatures = null;
+    let startLatLng = null, endLatLng = null;
+    let startMarker = null, endMarker = null, routeLine = null;
+
+    // 基础功能函数
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+    }
+
+    function isInLondon(lng, lat) {
+      return lng >= LONDON_BOUNDS.minLng && lng <= LONDON_BOUNDS.maxLng && 
+             lat >= LONDON_BOUNDS.minLat && lat <= LONDON_BOUNDS.maxLat;
+    }
+
+    function filterGeoJSONFeatures(geojson) {
+      if (!geojson || !geojson.features) return geojson;
+      
+      const filtered = { ...geojson, features: [] };
+      geojson.features.forEach(feature => {
+        let coords = null;
+        if (feature.geometry.type === 'Point') {
+          coords = feature.geometry.coordinates;
+        } else if (feature.geometry.type === 'Polygon' && feature.geometry.coordinates[0]) {
+          coords = feature.geometry.coordinates[0][0];
+        } else if (feature.geometry.type === 'LineString' && feature.geometry.coordinates[0]) {
+          coords = feature.geometry.coordinates[0];
+        }
+        
+        if (coords && isInLondon(coords[0], coords[1])) {
+          filtered.features.push(feature);
+        }
+      });
+      
+      return filtered;
+    }
+
+    function getLayerStyle(key) {
+      const styles = {
+        boundary: { color: '#dc2626', weight: 3, fillOpacity: 0.1 },
+        trails: { color: '#059669', weight: 2, opacity: 0.8 },
+        vegetation: { color: '#16a34a', fillOpacity: 0.3, weight: 1 },
+        water: { color: '#0ea5e9', fillOpacity: 0.6, weight: 1 },
+        facilities: { color: '#7c3aed', fillOpacity: 0.7, radius: 6 },
+        wildlife_islands: { color: '#f59e0b', fillOpacity: 0.35, weight: 1 }
+      };
+      return styles[key] || { color: '#64748b', weight: 2 };
+    }
+
+    function createLayerFromGeoJSON(key, geojson) {
+      const style = getLayerStyle(key);
+      
+      return L.geoJSON(geojson, {
+        style: feature => style,
+        pointToLayer: (feature, latlng) => {
+          if (key === 'poi') {
+            // wildlife: snap to nearest trail node to avoid water points
+            try {
+              const propsLocal = feature.properties || {};
+              const nameLocal = (propsLocal.name || propsLocal.Name || '').toLowerCase();
+              const amenityLocal = (propsLocal.amenity || '').toLowerCase();
+              const tourismLocal = (propsLocal.tourism || '').toLowerCase();
+              const speciesLocal = ((propsLocal.species || propsLocal['species:en'] || propsLocal.taxon || '') + '').toLowerCase();
+              const mmLocal = (propsLocal.man_made || '').toLowerCase();
+              const leisureLocal = (propsLocal.leisure || '').toLowerCase();
+              const looksWildlife = (
+                nameLocal.includes('duck') || nameLocal.includes('bird') || nameLocal.includes('animal') ||
+                nameLocal.includes('swan') || nameLocal.includes('pelican') || nameLocal.includes('goose') || nameLocal.includes('heron') ||
+                nameLocal.includes('cormorant') || nameLocal.includes('gull') || nameLocal.includes('coot') || nameLocal.includes('moorhen') || nameLocal.includes('grebe') ||
+                speciesLocal.length > 0 || leisureLocal === 'bird_hide' || mmLocal === 'wildlife_hide' || amenityLocal.includes('wildlife') || tourismLocal.includes('wildlife')
+              );
+              if (looksWildlife && window.trailGraph && trailGraph.nodes && trailGraph.nodes.size > 0) {
+                let best = null, bestD = Infinity;
+                for (const node of trailGraph.nodes.values()) {
+                  const d = haversine([latlng.lat, latlng.lng], node.latlng);
+                  if (d < bestD) { bestD = d; best = node.latlng; }
+                }
+                if (best && bestD <= 80) {
+                  latlng = L.latLng(best[0], best[1]);
+                }
+              }
+            } catch (_) {}
+            // 分类着色：野生动物=红色，树木=深绿色，其它保持原色
+            try {
+              const p = feature.properties || {};
+              const nameAll = (p.name || p.Name || '').toLowerCase();
+              const speciesAll = ((p.species || p['species:en'] || p.taxon || '') + '').toLowerCase();
+              const amenityAll = (p.amenity || '').toLowerCase();
+              const tourismAll = (p.tourism || '').toLowerCase();
+              const leisureAll = (p.leisure || '').toLowerCase();
+              const mmAll = (p.man_made || '').toLowerCase();
+
+              const isWildlife =
+                nameAll.includes('duck') || nameAll.includes('bird') || nameAll.includes('animal') ||
+                nameAll.includes('swan') || nameAll.includes('pelican') || nameAll.includes('goose') || nameAll.includes('heron') ||
+                nameAll.includes('cormorant') || nameAll.includes('gull') || nameAll.includes('coot') || nameAll.includes('moorhen') || nameAll.includes('grebe') ||
+                speciesAll.length > 0 || leisureAll === 'bird_hide' || mmAll === 'wildlife_hide' ||
+                amenityAll.includes('wildlife') || tourismAll.includes('wildlife');
+
+              const isTree = (p.natural === 'tree') || nameAll.includes('tree') || speciesAll.includes('tree');
+
+              const fill = isWildlife ? '#e11d48' : (isTree ? '#14532d' : '#f59e0b');
+
+              return L.circleMarker(latlng, {
+                radius: 4, fillColor: fill, color: '#fff', weight: 1,
+                fillOpacity: 0.8, opacity: 1
+              });
+            } catch(_) {
+              return L.circleMarker(latlng, {
+                radius: 4, fillColor: '#f59e0b', color: '#fff', weight: 1,
+                fillOpacity: 0.8, opacity: 1
+              });
+            }
+          }
+          return L.circleMarker(latlng, { ...style, radius: style.radius || 5 });
+        },
+        onEachFeature: (feature, layer) => {
+          const props = feature.properties || {};
+          const name = props.name || props.Name || '未命名';
+          
+          // 只有在非选择模式下才显示弹出窗口
+          layer.on('click', (e) => {
+            if (pickMode) {
+              // 阻止弹出窗口，让地图点击事件处理
+              e.originalEvent.stopPropagation();
+              return;
+            }
+            
+            // 正常显示弹出窗口
+            if (key === 'poi') {
+              const amenity = props.amenity || '';
+              const tourism = props.tourism || '';
+              layer.bindPopup(`<strong>${name}</strong><br>类型: ${amenity || tourism || '其他'}`).openPopup();
+            } else {
+              layer.bindPopup(`<strong>${name}</strong>`).openPopup();
+            }
+          });
+        }
+      });
+    }
+
+    function updateLayerUI(key, success, message = '') {
+      const el = document.querySelector(`[data-layer="${key}"] .layer-state`);
+      if (!el) return;
+      
+      if (success) {
+        el.className = 'layer-state ok';
+        el.textContent = '已加载';
+      } else {
+        el.className = 'layer-state err';
+        el.textContent = '加载失败' + (message ? (' · ' + message) : '');
+      }
+      
+      updateLayerStatus();
+    }
+
+    function updateLayerStatus() {
+      const total = Object.keys(LAYER_FILES).length;
+      const loaded = document.querySelectorAll('.layer-state.ok').length;
+      document.getElementById('layerStatus').textContent = `${loaded}/${total}`;
+    }
+
+    async function fetchJSON(url) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    }
+
+    async function loadLayer(key, filename) {
+      updateLayerUI(key, false, '加载中...');
+      
+      try {
+        let data = await fetchJSON(filename);
+        
+        if (key !== 'poi') {
+          data = filterGeoJSONFeatures(data);
+        }
+        
+        const layer = createLayerFromGeoJSON(key, data);
+        
+        if (layers[key]) {
+          map.removeLayer(layers[key]);
+        }
+        
+        layers[key] = layer;
+        layer.addTo(map);
+        
+        if (key === 'boundary') {
+          try {
+            map.fitBounds(layer.getBounds(), { padding: [20, 20] });
+          } catch (e) {
+            console.warn(`[BOUNDARY] 调整视图失败:`, e);
+          }
+        }
+        
+        if (key === 'trails') {
+          window.trailFeatures = data.features;
+          trailGraph = buildTrailGraph(data.features);
+          updatePlanButton();
+        }
+        
+        updateLayerUI(key, true);
+      } catch (e) {
+        console.error(`[${key.toUpperCase()}] 加载失败:`, e);
+        updateLayerUI(key, false, e.message);
+      }
+    }
+
+    async function autoLoadAll() {
+      await Promise.all(Object.entries(LAYER_FILES).map(([k, f]) => loadLayer(k, f)));
+      
+      // 自动加载POI数据，应用默认过滤设置
+      setTimeout(() => {
+        const reloadPoiBtn = document.getElementById('reloadPoi');
+        if (reloadPoiBtn) {
+          reloadPoiBtn.click();
+        }
+      }, 1000);
+    }
+
+    function setupStyleControls() {
+      // 创建图层列表UI
+      const layerList = document.getElementById('layerList');
+      Object.keys(LAYER_FILES).forEach(key => {
+        const item = document.createElement('div');
+        item.className = 'layer-item';
+        item.setAttribute('data-layer', key);
+        item.innerHTML = `
+          <span class="layer-name">${key}</span>
+          <span class="layer-state loading">等待加载</span>
+        `;
+        layerList.appendChild(item);
+      });
+    }
+    
+    // 筛选器与推荐
+    const routeData = [
+      {
+        id:'lake_circuit', name:'Lake Circuit', distance:1200, estimatedTime:15, difficulty:'easy',
+        wildlifeScore:0.9, shadeScore:0.7, quietScore:0.6, scenicScore:0.9, facilityScore:0.8,
+        trailCoords:[[51.5031,-0.1343],[51.5035,-0.1340],[51.5045,-0.1339],[51.5050,-0.1331],[51.5046,-0.1320],[51.5038,-0.1318]],
+        seasonalFeatures:{cherry:0.3, autumn:0.8, daffodils:0.2, tulips:0.1}
+      },
+      {
+        id:'royal_path', name:'Royal Path', distance:800, estimatedTime:10, difficulty:'easy',
+        wildlifeScore:0.6, shadeScore:0.5, quietScore:0.4, scenicScore:0.7, facilityScore:0.9,
+        trailCoords:[[51.5031,-0.1343],[51.5033,-0.1338],[51.5035,-0.1333],[51.5037,-0.1328],[51.5035,-0.1323]],
+        seasonalFeatures:{cherry:0.6, autumn:0.5, daffodils:0.4, tulips:0.3}
+      },
+      {
+        id:'north_meadow', name:'North Meadow Walk', distance:900, estimatedTime:12, difficulty:'easy',
+        wildlifeScore:0.7, shadeScore:0.8, quietScore:0.7, scenicScore:0.8, facilityScore:0.7,
+        trailCoords:[[51.5031,-0.1343],[51.5046,-0.1345],[51.5050,-0.1332],[51.5038,-0.1332],[51.5031,-0.1343]],
+        seasonalFeatures:{cherry:0.5, autumn:0.6, daffodils:0.4, tulips:0.2}
+      },
+      {
+        id:'blue_bridge_loop', name:'Blue Bridge Loop', distance:1000, estimatedTime:13, difficulty:'easy',
+        wildlifeScore:0.8, shadeScore:0.6, quietScore:0.5, scenicScore:0.8, facilityScore:0.7,
+        trailCoords:[[51.5029,-0.1363],[51.5026,-0.1360],[51.5023,-0.1354],[51.5021,-0.1348],[51.5024,-0.1343],[51.5028,-0.1347],[51.5029,-0.1363]],
+        seasonalFeatures:{cherry:0.4, autumn:0.7, daffodils:0.3, tulips:0.2}
+      },
+      {
+        id:'island_view', name:'Island View', distance:700, estimatedTime:9, difficulty:'easy',
+        wildlifeScore:0.85, shadeScore:0.5, quietScore:0.5, scenicScore:0.85, facilityScore:0.6,
+        trailCoords:[[51.5040,-0.1332],[51.5039,-0.1326],[51.5038,-0.1321],[51.5037,-0.1317],[51.5038,-0.1323],[51.5040,-0.1332]],
+        seasonalFeatures:{cherry:0.3, autumn:0.6, daffodils:0.3, tulips:0.2}
+      }
+    ];
+    
+    // 计算路线展示用的路标点（加入入口/小岛入口）
+    function computeWaypointsForDisplay(route) {
+      let arr = (route.trailCoords || []).map(c => [c[0], c[1]]);
+      const entranceWest = [51.5031, -0.1343];        // 西入口（The Mall 侧）
+      const duckIslandCottage = [51.50395, -0.13148]; // 小岛入口（Duck Island Cottage，更精确）
+      const near = (a,b)=> {
+        const dx = (a[0]-b[0]), dy = (a[1]-b[1]);
+        return Math.sqrt(dx*dx+dy*dy) < 0.0008; // ~90m
+      };
+      if (route?.id === 'lake_circuit') {
+        if (arr.length===0 || !near(arr[0], entranceWest)) arr.unshift(entranceWest);
+        // 确保终点固定为小岛入口：去重后追加精确点
+        arr = arr.filter(p=>!near(p, duckIslandCottage));
+        arr.push(duckIslandCottage);
+      } else if (route?.id === 'north_meadow') {
+        if (arr.length===0 || !near(arr[0], entranceWest)) arr.unshift(entranceWest);
+      }
+      return arr;
+    }
+
+    // 里程与时长估算（徒步约 4.5 km/h ≈ 75 m/min）
+    function summarizePath(pts) {
+      if (!pts || pts.length<2) return { distM: 0, timeMin: 0 };
+      let total=0;
+      for (let i=0;i<pts.length-1;i++) total += haversine(pts[i], pts[i+1]);
+      const timeMin = Math.max(1, Math.round(total/75));
+      return { distM: total, timeMin };
+    }
+
+    // 基于步道网络的里程/时间估算（优先用于展示）
+    function estimateDistanceAlongTrails(route) {
+      try {
+        if (!(window.trailGraph && trailGraph.nodes && trailGraph.nodes.size > 0)) return null;
+        const pts = computeWaypointsForDisplay(route);
+        if (!pts || pts.length < 2) return null;
+
+        // 将点吸附到最近步道节点
+        const ids = [];
+        for (const p of pts) {
+          const node = nearestNode(p); // 已放宽到300m
+          if (!node) return null;
+          ids.push(node.id);
+        }
+
+        let total = 0;
+        for (let i = 0; i < ids.length - 1; i++) {
+          const path = dijkstra(ids[i], ids[i+1]);
+          if (!path || path.length < 2) return null;
+          for (let j = 0; j < path.length - 1; j++) {
+            const a = trailGraph.nodes.get(path[j])?.latlng;
+            const b = trailGraph.nodes.get(path[j+1])?.latlng;
+            if (a && b) total += haversine(a, b);
+          }
+        }
+        const timeMin = Math.max(1, Math.round(total / 75));
+        return { distM: total, timeMin };
+      } catch (_) {
+        return null;
+      }
+    }
+    
+    function setupFilterUI() {
+      // chip click
+      document.querySelectorAll('#filterChips .chip').forEach(chip=>{
+        chip.addEventListener('click', ()=>{
+          const f = chip.dataset.filter; const v = chip.dataset.value;
+          if (f==='duration') {
+            // single-select
+            document.querySelectorAll('#filterChips .chip[data-filter="duration"]').forEach(c=>c.classList.remove('selected'));
+            if (selectedFilters.duration === parseInt(v)) {
+              selectedFilters.duration = null;
+            } else {
+              chip.classList.add('selected');
+              selectedFilters.duration = parseInt(v);
+            }
+          } else {
+            chip.classList.toggle('selected');
+            const arr = selectedFilters[f] || (selectedFilters[f]=[]);
+            if (chip.classList.contains('selected')) {
+              if (!arr.includes(v)) arr.push(v);
+            } else {
+              selectedFilters[f] = arr.filter(x=>x!==v);
+            }
+          }
+          generateRecommendations();
+        });
+      });
+      const applyBtn = document.getElementById('applyRec');
+      applyBtn.addEventListener('click', ()=>{
+        const has100 = recommendedRoutes.filter(r=>r.score>=1).length;
+        const threshold = has100>=2 ? 1 : 0.8;
+        const list = recommendedRoutes.filter(r=>r.score>=threshold).slice(0,2);
+        const route = list[selectedRecIndex] || list[0];
+        if (!route) return;
+        drawRecommendedRoute(route);
+      });
+      generateRecommendations();
+    }
+    
+    function generateRecommendations() {
+      recommendedRoutes = routeData.map(route=>{
+        let score = 0.5, reasons=[];
+        if (selectedFilters.atmosphere.includes('quiet') && route.quietScore>0.6) { score+=0.2; reasons.push('Quiet'); }
+        if (selectedFilters.atmosphere.includes('shaded') && route.shadeScore>0.6) { score+=0.15; reasons.push('Shade'); }
+        if (selectedFilters.atmosphere.includes('scenic') && route.scenicScore>0.7) { score+=0.15; reasons.push('Scenic'); }
+        if ((selectedFilters.wildlife||[]).length>0 && route.wildlifeScore>0.7) { score+=0.2; reasons.push('Wildlife'); }
+        if (selectedFilters.duration) {
+          const diff = Math.abs(route.estimatedTime - selectedFilters.duration);
+          if (diff<=5) { score+=0.1; reasons.push('Duration Match'); }
+        }
+        return {...route, score: Math.min(score,1), reasons};
+      }).sort((a,b)=>b.score-a.score);
+      renderRecommendations();
+      document.getElementById('applyRec').disabled = recommendedRoutes.length===0;
+    }
+    
+    function renderRecommendations() {
+      const box = document.getElementById('recResults');
+      if (!box) return;
+      if (recommendedRoutes.length===0) { box.textContent='Please select prerequisites to generate recommendations'; return; }
+      selectedRecIndex = 0;
+      const has100 = recommendedRoutes.filter(r=>r.score>=1).length;
+      const threshold = has100>=2 ? 1 : 0.8;
+      const filtered = recommendedRoutes.filter(r=>r.score>=threshold).slice(0,2);
+      const applyBtn2 = document.getElementById('applyRec');
+      if (applyBtn2) applyBtn2.disabled = filtered.length===0;
+      if (filtered.length===0) { box.textContent='No recommendations meet the threshold'; return; }
+      box.innerHTML = filtered.map((r,i)=>`
+        <div class="rec-card ${i? 'secondary':''}" data-idx="${i}">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div style="font-weight:600;color:#333;">${r.name}</div>
+            <div style="font-size:12px;color:#4CAF50;">${Math.round(r.score*100)} pts ${i? 'Alternative':'Recommended'}</div>
+          </div>
+          <div style="font-size:12px;color:#666;margin-top:4px;">
+            ${(() => { const s = estimateDistanceAlongTrails(r) || summarizePath(computeWaypointsForDisplay(r)); return `📏 ${Math.round(s.distM)}m · ⏱ ${s.timeMin}min · 🚶 ${r.difficulty}`; })()}
+          </div>
+          <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">${(r.reasons||[]).slice(0,4).map(x=>`<span class="chip selected" style="pointer-events:none">${x}</span>`).join('')}</div>
+        </div>
+      `).join('');
+      box.querySelectorAll('.rec-card').forEach(card=>{
+        card.addEventListener('click', ()=>{
+          box.querySelectorAll('.rec-card').forEach(c=>c.classList.remove('selected'));
+          card.classList.add('selected');
+          selectedRecIndex = parseInt(card.dataset.idx)||0;
+        });
+      });
+    }
+    
+    async function drawRecommendedRoute(route) {
+      let waypoints = computeWaypointsForDisplay(route);
+      if (!waypoints.length) return;
+      let hasGraph = window.trailGraph && trailGraph.nodes && trailGraph.nodes.size > 0;
+      if (!hasGraph) { hasGraph = await ensureTrailGraph(); }
+      if (!hasGraph) {
+        // Fallback: 未加载步道图时，直接按候选坐标连线，确保演示有路线
+        if (routeLine) map.removeLayer(routeLine);
+        routeLine = L.polyline(waypoints, { color:'#e11d48', weight:5, opacity:0.85, dashArray:'6,4' }).addTo(map);
+        let total = 0;
+        for (let i=0;i<waypoints.length-1;i++) total += haversine(waypoints[i], waypoints[i+1]);
+        const estMin = Math.max(1, Math.round(total / 75));
+        const dEl = document.getElementById('statDistance');
+        const tEl = document.getElementById('statTime');
+        if (dEl) dEl.textContent = `总距离：${Math.round(total)} m`;
+        if (tEl) tEl.textContent = `预计时间：${estMin} min`;
+        try { map.fitBounds(routeLine.getBounds(), { padding:[20,20] }); } catch(_) {}
+        return;
+      }
+
+      // 1) 可选：若起点附近有入口（≤400m），将其作为第一个路标点
+      try {
+        if (!__entranceFeatures) {
+          try {
+            const r = await fetch('./local-nav/local-nav/park-data/park-data/gates_all.geojson');
+            const j = await r.json();
+            __entranceFeatures = j.features || [];
+          } catch (_) {
+            const r2 = await fetch('./local-nav/local-nav/park-data/park-data/entrance.geojson');
+            const j2 = await r2.json();
+            __entranceFeatures = j2.features || [];
+          }
+        }
+        let nearest = null, minD = Infinity;
+        const start = waypoints[0];
+        for (const f of __entranceFeatures) {
+          if (f?.geometry?.type === 'Point') {
+            const [lng, lat] = f.geometry.coordinates;
+            const name = (f.properties?.name || '').toLowerCase();
+            const barrier = (f.properties?.barrier || '').toLowerCase();
+            const entranceTag = (f.properties?.entrance || '').toLowerCase();
+            const ok = name.includes('entrance') || name.includes('gate') || barrier === 'gate' || !!entranceTag;
+            if (!ok) continue;
+            const d = haversine(start, [lat, lng]);
+            if (d < minD) { minD = d; nearest = [lat, lng]; }
+          }
+        }
+        if (nearest && minD <= 400) waypoints.unshift(nearest);
+      } catch(_) {}
+
+      // 若是湖心环线，尝试将终点定位到“小岛入口”（Duck Island Cottage 或小岛质心）
+      try {
+        if (route.id === 'lake_circuit') {
+          let target = null;
+          // 1) 优先 Duck Island Cottage
+          try {
+            const poiRes = await fetch('./local-nav/local-nav/park-data/park-data/poi_all.geojson');
+            if (poiRes.ok) {
+              const poi = await poiRes.json();
+              const cand = (poi.features || []).find(f=>{
+                const n = ((f.properties?.name || f.properties?.Name || '')+'').toLowerCase();
+                return n.includes('duck island cottage') || n.includes('duck island');
+              });
+              if (cand?.geometry?.type === 'Point') {
+                const [lng,lat] = cand.geometry.coordinates;
+                target = [lat,lng];
+              }
+            }
+          } catch(_) {}
+          // 2) 退而求其次：小岛质心
+          if (!target) {
+            try {
+              const wiRes = await fetch('./local-nav/local-nav/park-data/park-data/wildlife_islands.geojson');
+              if (wiRes.ok) {
+                const wi = await wiRes.json();
+                const f = (wi.features || [])[0];
+                if (f?.geometry?.type === 'Polygon' && f.geometry.coordinates?.[0]?.length>2) {
+                  let sumLng=0,sumLat=0,n=0;
+                  f.geometry.coordinates[0].forEach(([lng,lat])=>{ sumLng+=lng; sumLat+=lat; n++; });
+                  target = [sumLat/n, sumLng/n];
+                }
+              }
+            } catch(_) {}
+          }
+          if (target) waypoints.push(target);
+        }
+      } catch(_) {}
+
+      // 2) 工具函数：最近步道节点、Dijkstra、节点到坐标
+      const nearestNodeId = (latlng) => {
+        let bestId = null, bestD = Infinity;
+        for (const node of trailGraph.nodes.values()) {
+          const d = haversine(latlng, node.latlng);
+          if (d < bestD) { bestD = d; bestId = node.id; }
+        }
+        return bestId;
+      };
+
+      const dijkstraPath = (srcId, dstId) => {
+        const dist = new Map(), prev = new Map(), visited = new Set();
+        for (const id of trailGraph.nodes.keys()) dist.set(id, Infinity);
+        dist.set(srcId, 0);
+        // 简单数组堆
+        const q = [srcId];
+        while (q.length) {
+          // 取最小 dist 的节点
+          q.sort((a,b)=>dist.get(a)-dist.get(b));
+          const u = q.shift();
+          if (!u || visited.has(u)) continue;
+          visited.add(u);
+          if (u === dstId) break;
+          const uNode = trailGraph.nodes.get(u);
+          if (!uNode) continue;
+          for (const [v, w] of uNode.adj.entries()) {
+            if (visited.has(v)) continue;
+            const alt = dist.get(u) + w;
+            if (alt < dist.get(v)) {
+              dist.set(v, alt);
+              prev.set(v, u);
+              if (!q.includes(v)) q.push(v);
+            }
+          }
+        }
+        if (!prev.has(dstId) && srcId !== dstId) return null;
+        // 回溯路径
+        const path = [dstId];
+        let cur = dstId;
+        while (cur !== srcId) {
+          cur = prev.get(cur);
+          if (!cur) break;
+          path.push(cur);
+        }
+        return path.reverse();
+      };
+
+      const nodesToLatLngs = (ids) => ids.map(id => trailGraph.nodes.get(id)?.latlng).filter(Boolean);
+
+      // 3) 将各路标点贴到步道节点并逐段拼接最短路（多候选吸附，确保可达）
+      const kNearest = (latlng, k=6) => {
+        const arr = [];
+        for (const node of trailGraph.nodes.values()) {
+          arr.push({ id: node.id, d: haversine(latlng, node.latlng) });
+        }
+        arr.sort((a,b)=>a.d-b.d);
+        return arr.slice(0, Math.min(k, arr.length)).map(x=>x.id);
+      };
+
+      let fullPath = [];
+      for (let i = 0; i < waypoints.length - 1; i++) {
+        const sCands = kNearest(waypoints[i], 6);
+        const tCands = kNearest(waypoints[i+1], 6);
+        let bestSeg = null, bestLen = Infinity;
+
+        for (const a of sCands) {
+          for (const b of tCands) {
+            const seg = dijkstraPath(a, b);
+            if (seg && seg.length) {
+              // 计算段长度
+              let len = 0;
+              for (let j=0;j<seg.length-1;j++) {
+                const A = trailGraph.nodes.get(seg[j])?.latlng;
+                const B = trailGraph.nodes.get(seg[j+1])?.latlng;
+                if (A && B) len += haversine(A, B);
+              }
+              if (len < bestLen) { bestLen = len; bestSeg = seg; }
+            }
+          }
+        }
+
+        if (bestSeg && bestSeg.length) {
+          const segLatLngs = nodesToLatLngs(bestSeg);
+          if (fullPath.length) segLatLngs.shift(); // 去掉首点避免重复
+          fullPath = fullPath.concat(segLatLngs);
+        }
+      }
+      if (!fullPath.length) {
+        // 兜底：直接按候选轨迹连线，确保演示有路线
+        if (routeLine) map.removeLayer(routeLine);
+        routeLine = L.polyline(waypoints, { color:'#e11d48', weight:5, opacity:0.85, dashArray:'6,4' }).addTo(map);
+        let total = 0;
+        for (let i=0;i<waypoints.length-1;i++) total += haversine(waypoints[i], waypoints[i+1]);
+        const estMin = Math.max(1, Math.round(total / 75));
+        const dEl = document.getElementById('statDistance');
+        const tEl = document.getElementById('statTime');
+        if (dEl) dEl.textContent = `总距离：${Math.round(total)} m`;
+        if (tEl) tEl.textContent = `预计时间：${estMin} min`;
+        try { map.fitBounds(routeLine.getBounds(), { padding:[20,20] }); } catch(_) {}
+        return;
+      }
+
+      if (routeLine) map.removeLayer(routeLine);
+      routeLine = L.polyline(fullPath, { color:'#e11d48', weight:5, opacity:0.9 }).addTo(map);
+
+      // 4) 统计距离与时间（步行约75 m/分钟）
+      let total = 0;
+      for (let i=0;i<fullPath.length-1;i++) total += haversine(fullPath[i], fullPath[i+1]);
+      const estMin = Math.max(1, Math.round(total / 75));
+      const dEl = document.getElementById('statDistance');
+      const tEl = document.getElementById('statTime');
+      if (dEl) dEl.textContent = `总距离：${Math.round(total)} m`;
+      if (tEl) tEl.textContent = `预计时间：${estMin} min`;
+
+      try { map.fitBounds(routeLine.getBounds(), { padding:[20,20] }); } catch(_) {}
+    }
+    
+    // 全局POI类型过滤函数
+    function filterBySelectedTypes(features) {
+      const selectedTypes = {
+        toilets: document.getElementById('poi-toilets').checked,
+        food: document.getElementById('poi-food').checked,
+        entrance: document.getElementById('poi-entrance').checked,
+        information: document.getElementById('poi-information').checked,
+        playground: document.getElementById('poi-playground').checked,
+        bench: document.getElementById('poi-bench').checked,
+        water: document.getElementById('poi-water').checked,
+        parking: document.getElementById('poi-parking').checked,
+        shop: document.getElementById('poi-shop').checked,
+        garden: document.getElementById('poi-garden').checked,
+        trees: document.getElementById('poi-trees').checked,
+        wildlife: document.getElementById('poi-wildlife').checked,
+        waterFeature: document.getElementById('poi-water-feature').checked,
+        memorial: document.getElementById('poi-memorial').checked,
+        bridge: document.getElementById('poi-bridge').checked,
+        viewpoint: document.getElementById('poi-viewpoint').checked,
+        art: document.getElementById('poi-art').checked,
+        monument: document.getElementById('poi-monument').checked,
+        other: document.getElementById('poi-other').checked
+      };
+
+      return features.filter(feature => {
+        const props = feature.properties || {};
+        const name = (props.name || '').toLowerCase();
+        const amenity = (props.amenity || '').toLowerCase();
+        const tourism = (props.tourism || '').toLowerCase();
+        
+        // 检查各种POI类型
+        if (selectedTypes.toilets && (amenity.includes('toilet') || name.includes('toilet'))) return true;
+        if (selectedTypes.food && (amenity.includes('cafe') || amenity.includes('restaurant') || name.includes('cafe'))) return true;
+        if (selectedTypes.entrance && (name.includes('entrance') || name.includes('gate'))) return true;
+        if (selectedTypes.information && (tourism.includes('information') || name.includes('information'))) return true;
+        if (selectedTypes.playground && (amenity.includes('playground') || name.includes('playground'))) return true;
+        if (selectedTypes.bench && (amenity.includes('bench') || name.includes('bench'))) return true;
+        if (selectedTypes.water && (amenity.includes('drinking_water') || name.includes('water'))) return true;
+        if (selectedTypes.parking && (amenity.includes('parking') || name.includes('parking'))) return true;
+        if (selectedTypes.shop && (props.shop || amenity.includes('shop'))) return true;
+        if (selectedTypes.garden && (props.leisure === 'garden' || name.includes('garden'))) return true;
+        if (selectedTypes.trees && (props.natural === 'tree' || name.includes('tree'))) return true;
+        if (selectedTypes.wildlife) {
+          const species = ((props.species || props['species:en'] || props.taxon || '') + '').toLowerCase();
+          const mm = (props.man_made || '').toLowerCase();
+          const leisure = (props.leisure || '').toLowerCase();
+          const amenity2 = (props.amenity || '').toLowerCase();
+          const tourism2 = (props.tourism || '').toLowerCase();
+          if (
+            name.includes('duck') || name.includes('bird') || name.includes('animal') ||
+            name.includes('swan') || name.includes('pelican') || name.includes('goose') || name.includes('heron') ||
+            name.includes('cormorant') || name.includes('gull') || name.includes('coot') || name.includes('moorhen') || name.includes('grebe') ||
+            species.length > 0 ||
+            leisure === 'bird_hide' || mm === 'wildlife_hide' ||
+            amenity2.includes('wildlife') || tourism2.includes('wildlife')
+          ) return true;
+        }
+        if (selectedTypes.waterFeature && (name.includes('lake') || name.includes('pond') || props.natural === 'water')) return true;
+        if (selectedTypes.memorial && (props.historic === 'memorial' || name.includes('memorial'))) return true;
+        if (selectedTypes.bridge && (props.man_made === 'bridge' || name.includes('bridge'))) return true;
+        if (selectedTypes.viewpoint && (tourism.includes('viewpoint') || name.includes('view'))) return true;
+        if (selectedTypes.art && (tourism.includes('artwork') || name.includes('art'))) return true;
+        if (selectedTypes.monument && (tourism.includes('monument') || name.includes('statue'))) return true;
+        if (selectedTypes.other && !amenity && !tourism && !props.natural) return true;
+        
+        return false;
+      });
+    }
+
+    function setupPoiControls() {
+      const poiSize = document.getElementById('poiSize');
+      const poiSizeValue = document.getElementById('poiSizeValue');
+      const poiOpacity = document.getElementById('poiOpacity');
+      const poiOpacityValue = document.getElementById('poiOpacityValue');
+      const poiLimit = document.getElementById('poiLimit');
+      const poiLimitValue = document.getElementById('poiLimitValue');
+      const poiFilter = document.getElementById('poiFilter');
+      const reloadPoi = document.getElementById('reloadPoi');
+      const analyzePoi = document.getElementById('analyzePoi');
+      const poiAnalysis = document.getElementById('poiAnalysis');
+      const selectAllPoi = document.getElementById('selectAllPoi');
+      const selectNonePoi = document.getElementById('selectNonePoi');
+      const selectEssentialPoi = document.getElementById('selectEssentialPoi');
+
+      // 更新显示值
+      poiSize.oninput = () => {
+        poiSizeValue.textContent = poiSize.value;
+        updatePoiStyle();
+      };
+      poiOpacity.oninput = () => {
+        poiOpacityValue.textContent = poiOpacity.value;
+        updatePoiStyle();
+      };
+      poiLimit.oninput = () => {
+        poiLimitValue.textContent = poiLimit.value;
+      };
+
+      // POI类型选择快捷按钮
+      selectAllPoi.onclick = () => {
+        document.querySelectorAll('[id^="poi-"]').forEach(cb => cb.checked = true);
+      };
+      
+      selectNonePoi.onclick = () => {
+        document.querySelectorAll('[id^="poi-"]').forEach(cb => cb.checked = false);
+      };
+      
+      selectEssentialPoi.onclick = () => {
+        document.querySelectorAll('[id^="poi-"]').forEach(cb => cb.checked = false);
+        document.getElementById('poi-toilets').checked = true;
+        document.getElementById('poi-entrance').checked = true;
+        document.getElementById('poi-information').checked = true;
+        document.getElementById('poi-water').checked = true;
+        document.getElementById('poi-wildlife').checked = true;
+        document.getElementById('poi-water-feature').checked = true;
+        document.getElementById('poi-memorial').checked = true;
+      };
+
+      // POI样式更新
+      function updatePoiStyle() {
+        if (layers.poi) {
+          const size = parseInt(poiSize.value);
+          const opacity = parseFloat(poiOpacity.value);
+          
+          layers.poi.eachLayer(layer => {
+            if (layer.setRadius && typeof layer.setRadius === 'function') {
+              layer.setRadius(size);
+            }
+            if (layer.setStyle && typeof layer.setStyle === 'function') {
+              layer.setStyle({ fillOpacity: opacity, opacity: opacity });
+            }
+          });
+        }
+      }
+
+      function getFilterBounds(filterType) {
+        switch (filterType) {
+          case 'ultra-strict': return { minLng: -0.133, maxLng: -0.127, minLat: 51.503, maxLat: 51.507 };
+          case 'strict': return { minLng: -0.138, maxLng: -0.122, minLat: 51.501, maxLat: 51.509 };
+          case 'moderate': return { minLng: -0.16, maxLng: -0.10, minLat: 51.495, maxLat: 51.515 };
+          case 'loose': return { minLng: -0.3, maxLng: 0.1, minLat: 51.45, maxLat: 51.55 };
+          default: return null;
+        }
+      }
+
+      function limitFeatures(features, maxCount) {
+        if (features.length <= maxCount) return features;
+        
+        const sorted = features.sort((a, b) => {
+          const aProps = a.properties || {};
+          const bProps = b.properties || {};
+          const aName = (aProps.name || '').toLowerCase();
+          const bName = (bProps.name || '').toLowerCase();
+          const aAmenity = (aProps.amenity || '').toLowerCase();
+          const bAmenity = (bProps.amenity || '').toLowerCase();
+          
+          if (aAmenity.includes('toilet') && !bAmenity.includes('toilet')) return -1;
+          if (!aAmenity.includes('toilet') && bAmenity.includes('toilet')) return 1;
+          
+          if (aName.includes('entrance') && !bName.includes('entrance')) return -1;
+          if (!aName.includes('entrance') && bName.includes('entrance')) return 1;
+          
+          return 0;
+        });
+        
+        return sorted.slice(0, maxCount);
+      }
+
+      function getFeatureCoords(feature) {
+        if (feature.geometry.type === 'Point') {
+          return feature.geometry.coordinates;
+        }
+        return null;
+      }
+
+      function isInBounds(coords, bounds) {
+        const [lng, lat] = coords;
+        return lng >= bounds.minLng && lng <= bounds.maxLng && 
+               lat >= bounds.minLat && lat <= bounds.maxLat;
+      }
+
+      // 重新加载POI
+      reloadPoi.onclick = async () => {
+        const filterType = poiFilter.value;
+        const maxCount = parseInt(poiLimit.value);
+        
+        console.log(`[POI] 重新加载，地理过滤: ${filterType}, 最大数量: ${maxCount}`);
+        
+        try {
+          const response = await fetch('./local-nav/local-nav/park-data/park-data/poi_all.geojson');
+          const originalData = await response.json();
+          
+          let features = originalData.features;
+          let geoFilteredCount = features.length;
+
+          // wildlife hotspots: add centroids of wildlife islands if wildlife is selected
+          try {
+            const wildlifeChecked = document.getElementById('poi-wildlife') && document.getElementById('poi-wildlife').checked;
+            if (wildlifeChecked) {
+              const wiRes = await fetch('./local-nav/local-nav/park-data/park-data/wildlife_islands.geojson');
+              if (wiRes.ok) {
+                const wiData = await wiRes.json();
+                (wiData.features || []).forEach(f => {
+                  try {
+                    if (f.geometry && f.geometry.type === 'Polygon' && f.geometry.coordinates && f.geometry.coordinates[0] && f.geometry.coordinates[0].length > 2) {
+                      const ring = f.geometry.coordinates[0];
+                      let sumLng=0,sumLat=0,n=0;
+                      ring.forEach(([lng,lat])=>{ sumLng+=lng; sumLat+=lat; n++; });
+                      const cLng = sumLng/n, cLat = sumLat/n;
+                      features.push({
+                        type:'Feature',
+                        properties:{ name:(f.properties?.name || 'Wildlife hotspot'), source:'wildlife_islands' },
+                        geometry:{ type:'Point', coordinates:[cLng,cLat] }
+                      });
+                    }
+                  } catch(_) {}
+                });
+              }
+            }
+          } catch(_) {}
+          
+          // 1. 地理位置过滤
+          if (filterType !== 'none') {
+            const bounds = getFilterBounds(filterType);
+            features = features.filter(feature => {
+              const coords = getFeatureCoords(feature);
+              return coords && isInBounds(coords, bounds);
+            });
+            geoFilteredCount = features.length;
+          }
+          
+          // 2. 类型过滤
+          const typeFilteredFeatures = filterBySelectedTypes(features);
+          
+          // 3. 数量限制
+          const finalFeatures = limitFeatures(typeFilteredFeatures, maxCount);
+          
+          // 4. 更新图层
+          const finalData = { ...originalData, features: finalFeatures };
+          
+          if (layers.poi) {
+            map.removeLayer(layers.poi);
+          }
+          
+          layers.poi = createLayerFromGeoJSON('poi', finalData);
+          layers.poi.addTo(map);
+          
+          poiAnalysis.innerHTML = `
+            <strong>POI reload complete</strong><br>
+            Raw data: ${originalData.features.length} items<br>
+            After geo-filter: ${geoFilteredCount} items<br>
+            After type-filter: ${typeFilteredFeatures.length} items<br>
+            Final shown: ${finalFeatures.length} items
+          `;
+          
+          updatePoiStyle();
+          
+        } catch (e) {
+          console.error('[POI] 重新加载失败:', e);
+          poiAnalysis.innerHTML = `<span style="color: red;">重新加载失败: ${e.message}</span>`;
+        }
+      };
+
+      // 分析POI数据
+      analyzePoi.onclick = async () => {
+        try {
+          const response = await fetch('./local-nav/local-nav/park-data/park-data/poi_all.geojson');
+          const data = await response.json();
+          const features = data.features;
+          
+          let minLng = Infinity, maxLng = -Infinity;
+          let minLat = Infinity, maxLat = -Infinity;
+          let validCount = 0;
+          
+          features.forEach(feature => {
+            if (feature.geometry.type === 'Point') {
+              const [lng, lat] = feature.geometry.coordinates;
+              if (lng && lat) {
+                minLng = Math.min(minLng, lng);
+                maxLng = Math.max(maxLng, lng);
+                minLat = Math.min(minLat, lat);
+                maxLat = Math.max(maxLat, lat);
+                validCount++;
+              }
+            }
+          });
+          
+          poiAnalysis.innerHTML = `
+            <strong>POI数据分析</strong><br>
+            总特征数: ${features.length}<br>
+            有效坐标: ${validCount}<br>
+            经度范围: ${minLng.toFixed(6)} ~ ${maxLng.toFixed(6)}<br>
+            纬度范围: ${minLat.toFixed(6)} ~ ${maxLat.toFixed(6)}
+          `;
+        } catch (e) {
+          poiAnalysis.innerHTML = `<span style="color: red;">分析失败: ${e.message}</span>`;
+        }
+      };
+    }
+
+    // 路径规划功能 - 参考parksense-bottom.html
+    let trailGraph = null;
+
+    function buildTrailGraph(trailFeatures) {
+      const graph = { nodes: new Map(), edges: [] };
+      let nodeId = 0;
+      
+      // 从步道特征构建节点和边
+      trailFeatures.forEach(feature => {
+        if (feature.geometry.type === 'LineString') {
+          const coords = feature.geometry.coordinates;
+          const nodes = [];
+          
+          // 为每个坐标点创建节点
+          coords.forEach(coord => {
+            const latlng = [coord[1], coord[0]]; // GeoJSON是[lng,lat]，Leaflet是[lat,lng]
+            const id = `node_${nodeId++}`;
+            
+            const node = {
+              id: id,
+              latlng: latlng,
+              adj: new Map()
+            };
+            
+            graph.nodes.set(id, node);
+            nodes.push(node);
+          });
+          
+          // 连接相邻节点
+          for (let i = 0; i < nodes.length - 1; i++) {
+            const nodeA = nodes[i];
+            const nodeB = nodes[i + 1];
+            const distance = haversine(nodeA.latlng, nodeB.latlng);
+            
+            nodeA.adj.set(nodeB.id, distance);
+            nodeB.adj.set(nodeA.id, distance);
+            
+            graph.edges.push({
+              from: nodeA.id,
+              to: nodeB.id,
+              weight: distance
+            });
+          }
+        }
+      });
+      
+      console.log(`构建步道图: ${graph.nodes.size} 个节点, ${graph.edges.length} 条边`);
+      return graph;
+    }
+
+    function haversine(p1, p2) {
+      const R = 6371000;
+      const lat1 = p1[0] * Math.PI / 180, lng1 = p1[1] * Math.PI / 180;
+      const lat2 = p2[0] * Math.PI / 180, lng2 = p2[1] * Math.PI / 180;
+      const dlat = lat2 - lat1, dlng = lng2 - lng1;
+      const A = Math.sin(dlat/2)**2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dlng/2)**2;
+      return 2 * R * Math.atan2(Math.sqrt(A), Math.sqrt(1-A));
+    }
+
+    // 若步道图未构建，则自动加载并构建
+    async function ensureTrailGraph() {
+      try {
+        if (window.trailGraph && trailGraph.nodes && trailGraph.nodes.size > 0) return true;
+        const res = await fetch('./local-nav/local-nav/park-data/park-data/trails.geojson');
+        if (!res.ok) return false;
+        const data = await res.json();
+        window.trailFeatures = Array.isArray(data.features) ? data.features : [];
+        trailGraph = buildTrailGraph(window.trailFeatures);
+        console.log('[Route] ensureTrailGraph nodes=', trailGraph?.nodes?.size || 0);
+        return trailGraph && trailGraph.nodes && trailGraph.nodes.size > 0;
+      } catch (e) {
+        console.error('[Route] ensureTrailGraph error', e);
+        return false;
+      }
+    }
+
+    function buildTrailGraph(features) {
+      // 以“节点ID”为键保存节点，并用坐标索引避免重复建点
+      const nodes = new Map();
+      const coordIndex = new Map();
+      let idCounter = 0;
+
+      const keyFor = (lat, lng) => `${lat.toFixed(6)},${lng.toFixed(6)}`;
+      const getOrCreate = (lat, lng) => {
+        const ckey = keyFor(lat, lng);
+        let nodeId = coordIndex.get(ckey);
+        if (!nodeId) {
+          nodeId = `node_${idCounter++}`;
+          const node = { id: nodeId, latlng: [lat, lng], adj: new Map() };
+          coordIndex.set(ckey, nodeId);
+          nodes.set(nodeId, node);
+        }
+        return nodes.get(nodeId);
+      };
+
+      features.forEach(feature => {
+        if (feature.geometry?.type === 'LineString') {
+          const coords = feature.geometry.coordinates || [];
+          let prevNode = null;
+          coords.forEach(([lng, lat]) => {
+            const node = getOrCreate(lat, lng);
+            if (prevNode) {
+              const d = haversine(prevNode.latlng, node.latlng);
+              prevNode.adj.set(node.id, d);
+              node.adj.set(prevNode.id, d);
+            }
+            prevNode = node;
+          });
+        }
+      });
+
+      return { nodes, coordIndex };
+    }
+
+    function nearestNode(latlng) {
+      if (!trailGraph) return null;
+      let nearest = null, minDist = Infinity;
+
+      for (const node of trailGraph.nodes.values()) {
+        const dist = haversine(latlng, node.latlng);
+        if (dist < minDist) {
+          minDist = dist;
+          nearest = node;
+        }
+      }
+
+      // 提高吸附半径，避免因采样点稍远而无法贴到步道
+      return minDist < 300 ? nearest : null; // 300米内
+    }
+
+    function dijkstra(startId, endId) {
+      if (!trailGraph) return null;
+      
+      const dist = new Map(), prev = new Map(), visited = new Set();
+      const pq = [];
+      
+      for (const node of trailGraph.nodes.values()) {
+        dist.set(node.id, node.id === startId ? 0 : Infinity);
+        pq.push(node.id);
+      }
+      
+      while (pq.length > 0) {
+        pq.sort((a, b) => dist.get(a) - dist.get(b));
+        const u = pq.shift();
+        
+        if (visited.has(u)) continue;
+        visited.add(u);
+        
+        if (u === endId) break;
+        
+        const uNode = trailGraph?.nodes?.get(u);
+        if (!uNode) continue;
+        
+        for (const [v, weight] of uNode.adj) {
+          if (visited.has(v)) continue;
+          const alt = dist.get(u) + weight;
+          if (alt < dist.get(v)) {
+            dist.set(v, alt);
+            prev.set(v, u);
+          }
+        }
+      }
+      
+      // 重建路径
+      const path = [];
+      let current = endId;
+      while (current !== undefined) {
+        const node = trailGraph?.nodes?.get(current);
+        if (node) path.unshift(node.latlng);
+        current = prev.get(current);
+      }
+      
+      return path.length > 1 ? path : null;
+    }
+
+    function findNearestNode(latlng) {
+      if (!trailGraph || trailGraph.nodes.size === 0) return null;
+      
+      let nearest = null;
+      let minDist = Infinity;
+      
+      for (const node of trailGraph.nodes.values()) {
+        const dist = haversine(latlng, node.latlng);
+        if (dist < minDist) {
+          minDist = dist;
+          nearest = node;
+        }
+      }
+      
+      return nearest;
+    }
+
+    function routeDistance(points) {
+      let s = 0;
+      for (let i = 0; i < points.length - 1; i++) {
+        s += haversine(points[i], points[i + 1]);
+      }
+      return s;
+    }
+
+    function setPickMode(mode) {
+      pickMode = mode;
+      const pickHint = document.getElementById('pickHint');
+      
+      // 控制POI弹窗的启用/禁用
+      if (layers.poi) {
+        layers.poi.eachLayer(layer => {
+          if (mode === 'start' || mode === 'end') {
+            // 禁用弹窗
+            layer.unbindPopup();
+            layer.closePopup();
+          } else {
+            // 重新启用弹窗
+            if (layer.feature && layer.feature.properties) {
+              const props = layer.feature.properties;
+              const name = props.name || '未知地点';
+              const amenity = props.amenity || '';
+              const tourism = props.tourism || '';
+              let popupContent = `<strong>${name}</strong>`;
+              if (amenity) popupContent += `<br>类型: ${amenity}`;
+              if (tourism) popupContent += `<br>旅游: ${tourism}`;
+              layer.bindPopup(popupContent);
+            }
+          }
+        });
+      }
+      
+      if (mode === 'start') {
+        pickHint.style.display = 'block';
+        pickHint.textContent = '提示：在地图上点击选择起点（POI弹窗已禁用）';
+      } else if (mode === 'end') {
+        pickHint.style.display = 'block';
+        pickHint.textContent = '提示：在地图上点击选择终点（POI弹窗已禁用）';
+      } else {
+        pickHint.style.display = 'none';
+        pickHint.textContent = '';
+      }
+      updatePlanButton();
+    }
+    
+    function updatePlanButton() {
+      const planBtn = document.getElementById('plan');
+      planBtn.disabled = !(startLatLng && endLatLng);
+    }
+
+    function clearAll() {
+      if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+      if (startMarker) { map.removeLayer(startMarker); startMarker = null; }
+      if (endMarker) { map.removeLayer(endMarker); endMarker = null; }
+      startLatLng = null; endLatLng = null;
+      document.getElementById('statDistance').textContent = '总距离：—';
+      document.getElementById('statTime').textContent = '预计时间：—';
+      setPickMode(null);
+    }
+
+    function planRoute() {
+      if (!(startLatLng && endLatLng)) return;
+      if (routeLine) map.removeLayer(routeLine);
+      
+      try {
+        // 如果有步道网络图，使用Dijkstra算法
+        if (trailGraph && trailGraph.nodes.size > 0) {
+          const startNode = findNearestNode(startLatLng);
+          const endNode = findNearestNode(endLatLng);
+          
+          if (startNode && endNode) {
+            const routePath = dijkstra(startNode.id, endNode.id);
+            if (routePath && routePath.length > 1) {
+              routeLine = L.polyline(routePath, {color:'#e11d48', weight:4}).addTo(map);
+              const dist = routeDistance(routePath);
+              document.getElementById('statDistance').textContent = `总距离：${Math.round(dist)} 米`;
+              document.getElementById('statTime').textContent = `预计时间：${Math.max(1, Math.round(dist/80))} 分钟`;
+              return;
+            }
+          }
+        }
+        
+        // 回退到直线路径
+        routeLine = L.polyline([startLatLng, endLatLng], {color:'#e11d48', weight:4, dashArray:'5,5'}).addTo(map);
+        const dist = map.distance(startLatLng, endLatLng);
+        document.getElementById('statDistance').textContent = `总距离：${Math.round(dist)} 米 (直线)`;
+        document.getElementById('statTime').textContent = `预计时间：${Math.max(1, Math.round(dist/80))} 分钟`;
+        
+      } catch (error) {
+        console.error('路径规划失败:', error);
+        // 使用直线作为备用方案
+        routeLine = L.polyline([startLatLng, endLatLng], {color:'#e11d48', weight:4, dashArray:'5,5'}).addTo(map);
+        const dist = map.distance(startLatLng, endLatLng);
+        document.getElementById('statDistance').textContent = `总距离：${Math.round(dist)} 米 (直线)`;
+        document.getElementById('statTime').textContent = `预计时间：${Math.max(1, Math.round(dist/80))} 分钟`;
+      }
+    }
+
+    // 事件监听器
+    document.getElementById('pickStart').onclick = () => setPickMode('start');
+    document.getElementById('pickEnd').onclick = () => setPickMode('end');
+    document.getElementById('clear').onclick = clearAll;
+    document.getElementById('plan').onclick = planRoute;
+
+    map.on('click', (e) => {
+      if (!pickMode) return;
+      if (pickMode === 'start') {
+        if (startMarker) map.removeLayer(startMarker);
+        startLatLng = [e.latlng.lat, e.latlng.lng];
+        startMarker = L.circleMarker(startLatLng, {radius:8, color:'#fff', weight:2, fillColor:'#22c55e', fillOpacity:1}).addTo(map).bindPopup('起点');
+      } else if (pickMode === 'end') {
+        if (endMarker) map.removeLayer(endMarker);
+        endLatLng = [e.latlng.lat, e.latlng.lng];
+        endMarker = L.circleMarker(endLatLng, {radius:8, color:'#fff', weight:2, fillColor:'#ef4444', fillOpacity:1}).addTo(map).bindPopup('终点');
+      }
+      setPickMode(null);
+      updatePlanButton();
+    });
+
+    // 天气信息 - 参考parksense-bottom.html
+    (async function() {
+      try {
+        const r = await fetch("https://api.openweathermap.org/data/2.5/weather?lat=51.5029&lon=-0.1342&units=metric&lang=en&appid=b3c7d2985be74417378ca6517f19c700");
+        const j = await r.json();
+        const t = Math.round(j.main?.temp ?? 0);
+        const d = j.weather?.[0]?.description || '';
+        document.getElementById('weather').textContent = `Weather: ${d}, ${t}°C`;
+      } catch(e) {
+        document.getElementById('weather').textContent = 'Weather: load failed (does not affect navigation)';
+      }
+    })();
+
+    // 页面加载完成后自动加载数据
+    // 图层开关功能
+    function setupLayerToggles() {
+      const toggles = document.querySelector('.layer-toggles');
+      if (toggles && !toggles.querySelector('input[data-layer="wildlife_islands"]')) {
+        const label = document.createElement('label');
+        label.className = 'layer-toggle';
+        label.innerHTML = '<input type="checkbox" data-layer="wildlife_islands" checked> Wildlife Islands';
+        toggles.appendChild(label);
+      }
+      document.querySelectorAll('[data-layer]').forEach(checkbox => {
+        checkbox.addEventListener('change', () => {
+          const layerKey = checkbox.getAttribute('data-layer');
+          const layer = layers[layerKey];
+          if (!layer) return;
+          if (checkbox.checked) {
+            layer.addTo(map);
+          } else {
+            map.removeLayer(layer);
+          }
+        });
+      });
+    }
+
+    // 页面加载完成后自动加载数据
+    document.addEventListener("DOMContentLoaded", () => {
+      setupStyleControls();
+      setupPoiControls();
+      setupLayerToggles();
+      setupFilterUI();
+      if (AUTO_ENABLE) {
+        autoLoadAll();
+      }
+    });
+  </script>
+</body>
+</html>

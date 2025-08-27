@@ -1,0 +1,34 @@
+# 开发工具文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 日志文件
+*.log
+logs/
+
+# 临时文件
+tmp/
+temp/
+*.tmp
+
+# Node.js (如果将来添加构建工具)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 本地服务器下载的文件
+local-server/server/caddy.exe
+local-server/server/caddy.zip
+
+# 备份文件
+*.bak
+*.backup
